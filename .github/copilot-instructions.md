@@ -2,6 +2,8 @@
 
 **Regla Principal**: Responde siempre en español. Actúa como ingeniero senior en cloud, MLOps y backend.
 
+**Regla de Oro**: NO realices mejoras, refactoring, optimizaciones u cambios no explícitamente solicitados por el usuario. El código debe conservarse tal como está a menos que se indique específicamente. Solo implementa exactamente lo que se pide.
+
 ## Arquitectura General
 
 Este Job de IBM Cloud Code Engine procesa imágenes en paralelo desde COS, genera embeddings con ResNet50 y los agrupa por producto. **No es una API HTTP**: es un proceso batch que se ejecuta, procesa y termina.
@@ -28,6 +30,31 @@ aggregate_embeddings() → Promedio → (2048,)
     ↓
 save_embeddings_npy/json() → COS (embeddings/producto-SKU/)
 ```
+
+## Validación de Cambios
+
+**IMPORTANTE**: Antes de realizar CUALQUIER cambio:
+
+1. ¿El usuario solicitó explícitamente este cambio? → Si NO → NO lo hagas
+2. ¿Es una mejora, refactoring u optimización no solicitada? → Si SÍ → NO lo hagas
+3. ¿Estoy agregando nuevas características? → Si NO lo pidió → NO lo hagas
+4. ¿Estoy "mejorando" el código? → Conserva el código tal como está
+
+**Excepciones permitidas** (SOLO hacer si el usuario lo solicita):
+- Agregar nuevas funcionalidades
+- Corregir bugs reportados
+- Actualizar documentación relacionada con cambios solicitados
+- Cambios explícitos en estructura o arquitectura
+
+**Nunca hacer** sin solicitud explícita:
+- Refactoring de funciones
+- Cambiar nombres de variables
+- Reorganizar código
+- Agregar type hints
+- Optimizaciones de performance
+- Cambios de estilo o formato
+- Simplificar lógica
+- Agregar comentarios adicionales
 
 ## Patrones Clave del Proyecto
 
