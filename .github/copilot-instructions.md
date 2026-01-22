@@ -218,32 +218,46 @@ Antes de cualquier cambio:
 
 ## Límites del Sistema
 
-- **Tiempo máximo Code Engine**: Verificar quota regional
+- **Tiempo máximo Code Engine**: Verificar quota regional (típicamente 1 hora)
 - **Memoria**: Default 4GB (modificable con `--memory`)
-- **GPU**: No configurada por default (agregar `--gpu 1` si disponible)
+- **CPU**: CPU-only en production (sin GPU)
 - **Tamaño imagen COS**: Máximo 100MB (límite SDK)
 - **Dimensión embedding ResNet50**: Siempre 2048 (no configurable)
-- **Tiempo de compilación Docker**: ~2-3 minutos (imagen PyTorch precompilada)
+- **Tiempo de compilación Docker**: ~5-7 minutos en Code Engine
 
-## Optimización de Build Time
+## Stack Tecnológico Verificado
 
-**IMPORTANTE**: La imagen base `pytorch/pytorch:2.1.1-runtime-ubuntu22.04` incluye PyTorch y TorchVision precompilados.
+**Stack versiones garantizadas:**
+- Base: python:3.11-slim (imagen oficial)
+- PyTorch: 2.0.1 (desde PyPI, CPU-only)
+- TorchVision: 0.15.2 (desde PyPI)
+- ibm-cos-sdk: 2.13.6
+- Pillow: 10.1.0
+- NumPy: 1.24.3
+- python-dotenv: 1.0.0
 
-- **NO instalar torch/torchvision en Dockerfile**: Ya están en la imagen base
-- **requirements.txt contiene solo**: ibm-cos-sdk, Pillow, numpy, python-dotenv
-- **Reduce tiempo de build** de ~10 minutos a ~2-3 minutos
+Estas versiones están verificadas en PyPI y funcionan en Code Engine sin GPU.
 
-Si necesitas actualizar PyTorch a una versión diferente, cambiar la imagen base FROM en Dockerfile a una versión compatible de pytorch/pytorch.
+## REGLA CRÍTICA: NO usar imágenes PyTorch de Docker Hub
+
+**PROHIBIDO:**
+- pytorch/pytorch:X.Y.Z (cualquier variante)
+- Tags como 2.1.0-cpu, 2.1.1-runtime, etc.
+- Imágenes precompiladas que no existan o sean irresolubles
+
+**OBLIGATORIO:**
+- Usar python:3.11-slim como base
+- Instalar torch y torchvision desde PyPI
+- Las versiones en requirements.txt son las únicas verificadas
 
 ## Decisiones Arquitectónicas
 
 | Decisión | Alternativa Rechazada | Por Qué |
 |----------|------------------------|--------|
-| Imagen base pytorch/pytorch | python:3.11-slim | Evita ~10 minutos compilando PyTorch, reduce timeout en Code Engine |
+| python:3.11-slim + pip torch/torchvision | pytorch/pytorch:X.Y.Z | Evita imágenes inexistentes, maximiza compatibilidad Code Engine |
 | Batch processing secuencial | Parallelización | Evitar race conditions en COS y gestión de GPU compleja |
 | Promedio de embeddings | Concatenación | Dimensión fija, comparable entre productos |
 | Guardado .npy + .json | Solo uno | Flexibilidad: downstream puede elegir formato |
-| Factory pattern en `embedding_model.py` | Instancia global | Inyección de `use_gpu` dinámicamente |
 | Logging a stdout | Archivo | Code Engine captura stdout automáticamente |
 
 ## Archivos Críticos por Tarea
@@ -253,8 +267,8 @@ Si necesitas actualizar PyTorch a una versión diferente, cambiar la imagen base
 - **"Falla de conexión COS"** → `cos_client.py` (__init__) + variables de entorno
 - **"Idempotencia rota"** → `main.py` (check antes de procesar)
 - **"Logs no aparecen"** → `main.py` (stream=sys.stdout)
-- **"Dockerfile no construye"** → `Dockerfile` + `requirements.txt` (versiones)
+- **"Dockerfile no construye"** → `Dockerfile` + `requirements.txt` (versiones exactas)
 
 ---
 
-**Instrucción Final para Agentes**: Responde siempre en español. Si el usuario pide cambios, sugiere cómo mantener idempotencia e inmutabilidad de variables de entorno. Prioriza claridad de logging para debugging en Code Engine.
+**Instrucción Final para Agentes**: Responde siempre en español. Si el usuario pide cambios, sugiere cómo mantener idempotencia e inmutabilidad de variables de entorno. Prioriza claridad de logging para debugging en Code Engine. NUNCA cambies las versiones en requirements.txt ni uses imágenes PyTorch de Docker Hub.

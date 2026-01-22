@@ -35,25 +35,24 @@ Este Job procesa imágenes almacenadas en IBM Cloud Object Storage (COS), genera
 
 ## Requisitos
 
-- Python 3.11+ (incluido en imagen Docker)
+- Python 3.11+
 - IBM Cloud COS (Credenciales)
 - Acceso a IBM Cloud Code Engine
-- Docker (para construir imagen)
+- Docker (para construir imagen localmente)
 
-Nota: PyTorch 2.1.1 y TorchVision vienen preinstalados en la imagen base Docker para optimizar el tiempo de compilación.
+Nota: PyTorch 2.0.1 y TorchVision 0.15.2 se instalan desde pip durante el build. El Dockerfile usa python:3.11-slim como imagen base para máxima compatibilidad con IBM Code Engine.
 
 ## Variables de Entorno Requeridas
 
 ```env
-# IBM COS Configuration
+# IBM COS Configuration (obligatorias)
 COS_ENDPOINT=https://s3.us-south.cloud-object-storage.appdomain.cloud
 COS_ACCESS_KEY_ID=xxx...
 COS_SECRET_ACCESS_KEY=xxx...
 COS_BUCKET_NAME=mi-bucket
 
 # Configuración opcional
-COS_OUTPUT_PREFIX=embeddings/          # Prefijo para guardar embeddings
-MODEL_NAME=resnet50                     # resnet50, resnet101, resnet152
+COS_OUTPUT_PREFIX=embeddings/          # Prefijo para guardar embeddings (default: embeddings/)
 ```
 
 ## Instalación Local
@@ -250,12 +249,13 @@ Exit codes:
 
 ### Tiempo de Build (Docker)
 
-La imagen base usa `pytorch/pytorch:2.1.1-runtime-ubuntu22.04` que incluye:
-- Python 3.11
-- PyTorch 2.1.1 y TorchVision precompilados
-- CUDA runtime (compatible con GPU si disponible)
+El Dockerfile usa `python:3.11-slim` e instala PyTorch 2.0.1 desde pip:
+- Base: python:3.11-slim (imagen mínima ~150MB)
+- PyTorch 2.0.1 (versión CPU, ~500MB)
+- TorchVision 0.15.2 (~200MB)
+- Dependencias del sistema para Pillow e imágenes
 
-Esto reduce significativamente el tiempo de compilación (de ~10 minutos a ~2-3 minutos) comparado con instalar PyTorch desde fuente.
+Tiempo de compilación estimado: ~5-7 minutos en Code Engine (depende de ancho de banda)
 
 ### Memoria y CPU
 
@@ -264,15 +264,6 @@ Para grandes volúmenes:
 ibmcloud ce job create \
   --memory 8G \      # Aumentar memoria para batch processing
   --cpu 4 \          # Usar múltiples CPUs
-  ...
-```
-
-### GPU (si disponible en su región)
-
-```bash
-ibmcloud ce job create \
-  --gpu 1 \          # Incluir GPU para faster inference
-  --memory 16G \
   ...
 ```
 

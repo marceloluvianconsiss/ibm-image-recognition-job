@@ -3,7 +3,6 @@ Módulo para generación de embeddings usando modelos preentrenados.
 Utiliza torchvision para modelos ResNet.
 """
 
-import os
 import logging
 from typing import Optional
 import torch
@@ -17,41 +16,32 @@ logger = logging.getLogger(__name__)
 class EmbeddingModel:
     """Modelo para generar embeddings de imágenes."""
 
-    AVAILABLE_MODELS = {
-        "resnet50": models.resnet50,
-        "resnet101": models.resnet101,
-        "resnet152": models.resnet152,
-    }
-
-    def __init__(self, model_name: str = "resnet50", use_gpu: bool = True):
+    def __init__(self, model_name: str = "resnet50"):
         """
-        Inicializa el modelo de embeddings.
+        Inicializa el modelo de embeddings usando CPU únicamente.
         
         Args:
             model_name: Nombre del modelo (resnet50, resnet101, resnet152)
-            use_gpu: Usar GPU si está disponible
         """
-        if model_name not in self.AVAILABLE_MODELS:
-            raise ValueError(
-                f"Modelo no soportado: {model_name}. "
-                f"Disponibles: {list(self.AVAILABLE_MODELS.keys())}"
-            )
-
+        self.device = torch.device("cpu")
         self.model_name = model_name
-        self.device = torch.device(
-            "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
-        )
 
-        logger.info(f"Usando dispositivo: {self.device}")
-        logger.info(f"Cargando modelo: {model_name}")
+        logger.info(f"Cargando modelo: {model_name} en CPU")
 
         # Cargar modelo preentrenado
-        model_fn = self.AVAILABLE_MODELS[model_name]
-        self.model = model_fn(weights="DEFAULT")
-        self.model = self.model.to(self.device)
+        if model_name == "resnet50":
+            model = models.resnet50(weights="DEFAULT")
+        elif model_name == "resnet101":
+            model = models.resnet101(weights="DEFAULT")
+        elif model_name == "resnet152":
+            model = models.resnet152(weights="DEFAULT")
+        else:
+            raise ValueError(f"Modelo no soportado: {model_name}")
+
+        self.model = model.to(self.device)
         self.model.eval()
 
-        # Crear extractor de features (remover clasificador final)
+        # Crear extractor de features (remover capa final fc)
         self.feature_extractor = nn.Sequential(*list(self.model.children())[:-1])
         self.feature_extractor.eval()
 
@@ -69,7 +59,7 @@ class EmbeddingModel:
             ]
         )
 
-        logger.info(f"Modelo {model_name} listo para generar embeddings")
+        logger.info(f"Modelo {model_name} listo (CPU mode)")
 
     def get_embedding(self, image_array: np.ndarray) -> np.ndarray:
         """
@@ -79,7 +69,7 @@ class EmbeddingModel:
             image_array: Array de numpy en formato RGB (height, width, 3)
             
         Returns:
-            Array de embedding (1, 2048) para ResNet50
+            Array de embedding (2048,) para ResNet50
         """
         try:
             # Aplicar transformaciones
@@ -135,16 +125,14 @@ class EmbeddingModel:
         return np.mean(embeddings, axis=0)
 
 
-def get_embedding_model(use_gpu: bool = True) -> EmbeddingModel:
+def get_embedding_model(model_name: str = "resnet50") -> EmbeddingModel:
     """
     Factory para crear el modelo de embeddings.
-    Usa variable de entorno MODEL_NAME si está disponible.
     
     Args:
-        use_gpu: Usar GPU si está disponible
+        model_name: Nombre del modelo
         
     Returns:
         Instancia de EmbeddingModel
     """
-    model_name = os.getenv("MODEL_NAME", "resnet50")
-    return EmbeddingModel(model_name=model_name, use_gpu=use_gpu)
+    return EmbeddingModel(model_name=model_name)

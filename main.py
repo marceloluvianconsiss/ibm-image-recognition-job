@@ -15,6 +15,7 @@ Workflow:
 
 import logging
 import sys
+import os
 from collections import defaultdict
 
 from cos_client import COSClient
@@ -29,6 +30,22 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
+
+
+def validate_environment():
+    """Valida que las variables de entorno obligatorias estén configuradas."""
+    required_vars = [
+        "COS_ENDPOINT",
+        "COS_ACCESS_KEY_ID",
+        "COS_SECRET_ACCESS_KEY",
+        "COS_BUCKET_NAME",
+    ]
+    
+    missing = [var for var in required_vars if not os.getenv(var)]
+    if missing:
+        raise ValueError(f"Faltan variables de entorno obligatorias: {', '.join(missing)}")
+    
+    logger.info("Variables de entorno validadas")
 
 
 def process_product_images(
@@ -77,7 +94,6 @@ def process_product_images(
 
             except Exception as e:
                 logger.error(f"Error procesando {image_key}: {str(e)}")
-                # Continuar con siguiente imagen
                 continue
 
         if not valid_images:
@@ -90,9 +106,7 @@ def process_product_images(
 
         # Agregar embeddings (promedio)
         aggregated_embedding = embedding_model.aggregate_embeddings(embeddings)
-        logger.info(
-            f"Embeddings agregados para {product_sku}: shape {aggregated_embedding.shape}"
-        )
+        logger.info(f"Embeddings agregados para {product_sku}: shape {aggregated_embedding.shape}")
 
         # Guardar en COS (ambos formatos para flexibilidad)
         cos_client.save_embeddings_npy(product_sku, aggregated_embedding)
@@ -113,13 +127,16 @@ def main():
         logger.info("Iniciando Job: IBM Image Recognition")
         logger.info("=" * 60)
 
+        # Validar variables de entorno
+        validate_environment()
+
         # Inicializar cliente COS
         logger.info("Conectando a IBM Cloud Object Storage...")
         cos_client = COSClient()
 
         # Inicializar modelo
         logger.info("Cargando modelo de embeddings...")
-        embedding_model = get_embedding_model(use_gpu=True)
+        embedding_model = get_embedding_model(model_name="resnet50")
 
         # Listar imágenes
         logger.info("Listando imágenes en COS...")
@@ -145,9 +162,7 @@ def main():
 
             # Verificar idempotencia
             if cos_client.check_embeddings_exist(product_sku, format="npy"):
-                logger.info(
-                    f"Embeddings ya existen para {product_sku}, omitiendo..."
-                )
+                logger.info(f"Embeddings ya existen para {product_sku}, omitiendo...")
                 successful += 1
                 continue
 
