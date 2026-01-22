@@ -35,10 +35,12 @@ Este Job procesa imágenes almacenadas en IBM Cloud Object Storage (COS), genera
 
 ## Requisitos
 
-- Python 3.11+
-- IBM Cloud COS (Credentials)
+- Python 3.11+ (incluido en imagen Docker)
+- IBM Cloud COS (Credenciales)
 - Acceso a IBM Cloud Code Engine
-- GPU (opcional, recomendado para velocidad)
+- Docker (para construir imagen)
+
+Nota: PyTorch 2.1.1 y TorchVision vienen preinstalados en la imagen base Docker para optimizar el tiempo de compilación.
 
 ## Variables de Entorno Requeridas
 
@@ -245,6 +247,15 @@ Exit codes:
 - `1`: Error crítico o algunos productos fallaron
 
 ## Optimizaciones en Producción
+
+### Tiempo de Build (Docker)
+
+La imagen base usa `pytorch/pytorch:2.1.1-runtime-ubuntu22.04` que incluye:
+- Python 3.11
+- PyTorch 2.1.1 y TorchVision precompilados
+- CUDA runtime (compatible con GPU si disponible)
+
+Esto reduce significativamente el tiempo de compilación (de ~10 minutos a ~2-3 minutos) comparado con instalar PyTorch desde fuente.
 
 ### Memoria y CPU
 

@@ -196,11 +196,23 @@ Antes de cualquier cambio:
 - **GPU**: No configurada por default (agregar `--gpu 1` si disponible)
 - **Tamaño imagen COS**: Máximo 100MB (límite SDK)
 - **Dimensión embedding ResNet50**: Siempre 2048 (no configurable)
+- **Tiempo de compilación Docker**: ~2-3 minutos (imagen PyTorch precompilada)
+
+## Optimización de Build Time
+
+**IMPORTANTE**: La imagen base `pytorch/pytorch:2.1.1-runtime-ubuntu22.04` incluye PyTorch y TorchVision precompilados.
+
+- **NO instalar torch/torchvision en Dockerfile**: Ya están en la imagen base
+- **requirements.txt contiene solo**: ibm-cos-sdk, Pillow, numpy, python-dotenv
+- **Reduce tiempo de build** de ~10 minutos a ~2-3 minutos
+
+Si necesitas actualizar PyTorch a una versión diferente, cambiar la imagen base FROM en Dockerfile a una versión compatible de pytorch/pytorch.
 
 ## Decisiones Arquitectónicas
 
 | Decisión | Alternativa Rechazada | Por Qué |
 |----------|------------------------|--------|
+| Imagen base pytorch/pytorch | python:3.11-slim | Evita ~10 minutos compilando PyTorch, reduce timeout en Code Engine |
 | Batch processing secuencial | Parallelización | Evitar race conditions en COS y gestión de GPU compleja |
 | Promedio de embeddings | Concatenación | Dimensión fija, comparable entre productos |
 | Guardado .npy + .json | Solo uno | Flexibilidad: downstream puede elegir formato |

@@ -1,6 +1,6 @@
 # Dockerfile para IBM Cloud Code Engine
-# Imagen base ligera con Python 3.11
-FROM python:3.11-slim
+# Imagen base PyTorch 2.1.1 precompilada para optimizar build time
+FROM pytorch/pytorch:2.1.1-runtime-ubuntu22.04
 
 # Variables de entorno del sistema
 ENV PYTHONUNBUFFERED=1 \
@@ -10,9 +10,8 @@ ENV PYTHONUNBUFFERED=1 \
 # Directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema (para Pillow y PyTorch)
+# Instalar dependencias del sistema (para Pillow)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     libopenjp2-7 \
     libtiff6 \
     && rm -rf /var/lib/apt/lists/*
